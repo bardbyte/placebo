@@ -1,0 +1,22 @@
+# Core dependencies
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+httpx>=0.27.0  # async HTTP client
+
+# LangGraph and LangChain
+# Using latest stable versions as of Jan 2026
+# If you have version conflicts, try: langgraph==0.2.50, langchain-core==0.3.28
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# MCP SDK (Model Context Protocol)
+# Official Anthropic MCP SDK for Python
+mcp>=1.0.0
+
+# SSE client for MCP transport
+httpx-sse>=0.4.0
+
+# Optional: for local development
+rich>=13.0.0  # pretty console output for thinking display

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lumi-llm"
+version = "0.1.0"
+description = "A reusable package for LLM access with MCP tool binding"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Team"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "httpx-sse>=0.4.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "rich>=13.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lumi_llm*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

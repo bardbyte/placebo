@@ -1,0 +1,206 @@
+# MCP Toolbox Configuration for Looker
+# Reference: https://googleapis.github.io/genai-toolbox/resources/tools/looker/
+
+sources:
+  my-looker:
+    kind: looker
+    base_url: ${LOOKER_INSTANCE_URL}
+    client_id: ${LOOKER_CLIENT_ID}
+    client_secret: ${LOOKER_CLIENT_SECRET}
+    verify_ssl: true
+    timeout: "120s"
+
+# Toolsets allow loading groups of tools together
+toolsets:
+  # Core tools for data exploration and querying
+  data-exploration:
+    - get-models
+    - get-explores
+    - get-dimensions
+    - get-measures
+    - get-filters
+    - get-parameters
+    - query
+    - query-sql
+    - query-url
+
+  # Tools for working with saved content
+  saved-content:
+    - get-looks
+    - run-look
+    - get-dashboards
+    - run-dashboard
+
+  # Tools for LookML project exploration
+  lookml-projects:
+    - get-projects
+    - get-project-files
+    - get-project-file
+
+  # All tools combined
+  all:
+    - get-models
+    - get-explores
+    - get-dimensions
+    - get-measures
+    - get-filters
+    - get-parameters
+    - query
+    - query-sql
+    - query-url
+    - get-looks
+    - run-look
+    - get-dashboards
+    - run-dashboard
+    - get-projects
+    - get-project-files
+    - get-project-file
+
+# Tool definitions
+tools:
+  # ============================================
+  # Data Model Discovery
+  # ============================================
+  get-models:
+    kind: looker-get-models
+    source: my-looker
+    description: |
+      Retrieves all LookML models available in the Looker instance.
+      Use this first to discover what data models exist.
+      Returns model name and label for each available model.
+
+  get-explores:
+    kind: looker-get-explores
+    source: my-looker
+    description: |
+      Retrieves all explores within a specified LookML model.
+      Explores are curated data views that join tables for analysis.
+      Requires: model name (from get-models).
+      Returns: explore name, description, label, and group_label.
+
+  get-dimensions:
+    kind: looker-get-dimensions
+    source: my-looker
+    description: |
+      Retrieves all dimensions from a specific explore in a model.
+      Dimensions are attributes used for grouping and filtering.
+      Requires: model name and explore name.
+      Returns: field name, description, type, label, tags, and suggestions.
+
+  get-measures:
+    kind: looker-get-measures
+    source: my-looker
+    description: |
+      Retrieves all measures from a specific explore in a model.
+      Measures are aggregations like SUM, COUNT, AVG.
+      Requires: model name and explore name.
+      Returns: field name, description, type, label, and tags.
+
+  get-filters:
+    kind: looker-get-filters
+    source: my-looker
+    description: |
+      Retrieves available filter fields from an explore.
+      Filters allow narrowing down query results.
+      Requires: model name and explore name.
+
+  get-parameters:
+    kind: looker-get-parameters
+    source: my-looker
+    description: |
+      Retrieves parameters defined in an explore.
+      Parameters are user-input values that modify query behavior.
+      Requires: model name and explore name.
+
+  # ============================================
+  # Query Execution
+  # ============================================
+  query:
+    kind: looker-query
+    source: my-looker
+    description: |
+      Runs an inline query using the Looker semantic model.
+      Specify dimensions, measures, filters, and sorting.
+      Requires: model, explore, fields (dimensions/measures), and optional filters.
+      Returns: query results as structured data.
+
+  query-sql:
+    kind: looker-query-sql
+    source: my-looker
+    description: |
+      Generates and optionally executes a SQL query.
+      Use when you need to see or run the underlying SQL.
+      Requires: model, explore, fields, and optional filters.
+      Returns: generated SQL and optionally the query results.
+
+  query-url:
+    kind: looker-query-url
+    source: my-looker
+    description: |
+      Generates a URL to view the query in Looker's Explore interface.
+      Useful for sharing or further exploration in the UI.
+      Requires: model, explore, fields, and optional filters.
+      Returns: URL to the explore with the query pre-configured.
+
+  # ============================================
+  # Saved Looks and Dashboards
+  # ============================================
+  get-looks:
+    kind: looker-get-looks
+    source: my-looker
+    description: |
+      Searches for saved Looks by name or description.
+      Looks are saved queries with visualizations.
+      Returns: Look ID, title, description, and folder information.
+
+  run-look:
+    kind: looker-run-look
+    source: my-looker
+    description: |
+      Executes a saved Look and returns its data.
+      Requires: Look ID (from get-looks).
+      Returns: query results from the Look.
+
+  get-dashboards:
+    kind: looker-get-dashboards
+    source: my-looker
+    description: |
+      Searches for dashboards by name or description.
+      Dashboards contain multiple visualizations and filters.
+      Returns: dashboard ID, title, description, and folder.
+
+  run-dashboard:
+    kind: looker-run-dashboard
+    source: my-looker
+    description: |
+      Executes all queries in a dashboard and returns data.
+      Requires: dashboard ID (from get-dashboards).
+      Returns: data from all dashboard elements.
+
+  # ============================================
+  # LookML Project Exploration
+  # ============================================
+  get-projects:
+    kind: looker-get-projects
+    source: my-looker
+    description: |
+      Lists all LookML projects in the Looker instance.
+      Projects contain LookML files that define the data model.
+      Returns: project name, ID, and validation status.
+
+  get-project-files:
+    kind: looker-get-project-files
+    source: my-looker
+    description: |
+      Lists all LookML files in a specific project.
+      Requires: project name (from get-projects).
+      Returns: file names, types (model, view, explore), and paths.
+
+  get-project-file:
+    kind: looker-get-project-file
+    source: my-looker
+    description: |
+      Retrieves the contents of a specific LookML file.
+      Use to inspect model definitions, views, or explore configurations.
+      Requires: project name and file path.
+      Returns: full LookML source code of the file.

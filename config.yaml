@@ -1,0 +1,42 @@
+idaas:
+  id: ${CIBIS_CONSUMER_INTEGRATION_ID}
+  version: "2"
+  url: "https://eag-dev.aexp.com/oneidentity/security/digital/v1/application/token"
+  secret: ${CIBIS_CONSUMER_SECRET}
+  token_refresh_time: 60
+
+llm:
+  # Default provider to use
+  default_provider: "gemini"
+
+  providers:
+    gemini:
+      url: "https://eag-dev.aexp.com/genai/google/v1/models/gemini-1.5-pro-002/generateContent"
+      scope: ["/genai/google/v1/models/gemini-1.5-pro-002/#*::post"]
+      temperature: 0.5
+      top_k: 5
+      top_p: 0.9
+      max_tokens: 1024
+
+    openai:
+      url: "https://eag-dev.aexp.com/genai/openai/v1/chat/completions"
+      scope: ["/genai/openai/v1/chat/completions/#*::post"]
+      model: "gpt-4-turbo"
+      temperature: 0.5
+      max_tokens: 1024
+
+    azure_openai:
+      url: "https://eag-dev.aexp.com/genai/azure/openai/deployments/{deployment}/chat/completions"
+      scope: ["/genai/azure/openai/#*::post"]
+      api_version: "2024-02-15-preview"
+      deployment: "gpt-4-turbo"
+      temperature: 0.5
+      max_tokens: 1024
+
+mcp:
+  servers:
+    looker:
+      # MCP Toolbox server URL (runs locally or on GKE)
+      # The toolbox handles Looker auth via its own tools.yaml
+      url: "http://localhost:5000/mcp"
+      transport: "sse"
