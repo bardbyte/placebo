@@ -20,31 +20,25 @@ class IdaaSConfig(BaseModel):
     url: str
     secret: str
     token_refresh_time: int = 60
+    verify_ssl: bool = True
 
 
-class LLMProviderConfig(BaseModel):
-    """Configuration for a single LLM provider."""
+class LLMConfig(BaseModel):
+    """LLM configuration - direct provider settings."""
     url: str
     scope: list[str] = Field(default_factory=list)
     temperature: float = 0.5
     top_k: int | None = None
     top_p: float | None = None
     max_tokens: int = 1024
-    model: str | None = None  # For OpenAI
-    api_version: str | None = None  # For Azure
-    deployment: str | None = None  # For Azure
-
-
-class LLMConfig(BaseModel):
-    """LLM configuration."""
-    default_provider: str = "gemini"
-    providers: dict[str, LLMProviderConfig] = Field(default_factory=dict)
+    verify_ssl: bool = True
 
 
 class MCPServerConfig(BaseModel):
     """Configuration for a single MCP server."""
     url: str
-    transport: str = "sse"
+    transport: str = "streamable-http"
+    verify_ssl: bool = True
 
 
 class MCPConfig(BaseModel):

@@ -45,6 +45,10 @@ class IdaaSClient:
         # Buffer time before expiry to refresh (10 seconds)
         self._refresh_buffer = 10
 
+    def _get_verify_ssl(self) -> bool:
+        """Get SSL verification setting from config."""
+        return getattr(self.config, 'verify_ssl', True)
+
     @property
     def _async_lock_instance(self) -> asyncio.Lock:
         """Lazily create async lock to avoid event loop issues."""
@@ -87,7 +91,10 @@ class IdaaSClient:
                 return self._token.access_token
 
             # Fetch new token
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(
+                timeout=30.0,
+                verify=self._get_verify_ssl()
+            ) as client:
                 payload = {
                     "grant_type": "client_credentials",
                     "client_id": self.config.id,
@@ -123,7 +130,10 @@ class IdaaSClient:
                 return self._token.access_token
 
             # Fetch new token
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(
+                timeout=30.0,
+                verify=self._get_verify_ssl()
+            ) as client:
                 payload = {
                     "grant_type": "client_credentials",
                     "client_id": self.config.id,

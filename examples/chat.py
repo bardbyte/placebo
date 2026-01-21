@@ -237,11 +237,7 @@ async def main():
 
     # Initialize Gemini provider
     print("[3/4] Initializing Gemini provider...")
-    gemini_config = settings.llm.providers.get("gemini")
-    if not gemini_config:
-        print("      Error: Gemini provider not configured")
-        return
-    llm_provider = GeminiProvider(gemini_config, auth_client)
+    llm_provider = GeminiProvider(settings.llm, auth_client)
     print("      Gemini provider ready")
 
     # Connect to Looker MCP

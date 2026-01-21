@@ -13,7 +13,7 @@ from lumi_llm.providers.base import BaseLLMProvider, LLMResponse, LLMChunk, Tool
 
 if TYPE_CHECKING:
     from lumi_llm.auth.idaas import IdaaSClient
-    from lumi_llm.config.settings import LLMProviderConfig
+    from lumi_llm.config.settings import LLMConfig
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -24,7 +24,7 @@ class GeminiProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        config: "LLMProviderConfig",
+        config: "LLMConfig",
         auth_client: "IdaaSClient",
     ):
         """
@@ -157,6 +157,7 @@ class GeminiProvider(BaseLLMProvider):
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
         }
 
     def _get_headers_sync(self) -> dict[str, str]:
@@ -165,6 +166,7 @@ class GeminiProvider(BaseLLMProvider):
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
         }
 
     def _build_request_body(
@@ -198,6 +200,10 @@ class GeminiProvider(BaseLLMProvider):
 
         return body
 
+    def _get_verify_ssl(self) -> bool:
+        """Get SSL verification setting from config."""
+        return getattr(self.config, 'verify_ssl', True)
+
     async def generate(
         self,
         messages: list[dict[str, Any]],
@@ -208,7 +214,10 @@ class GeminiProvider(BaseLLMProvider):
         headers = await self._get_headers()
         body = self._build_request_body(messages, tools, **kwargs)
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            verify=self._get_verify_ssl()
+        ) as client:
             response = await client.post(
                 self.config.url,
                 headers=headers,
@@ -227,7 +236,10 @@ class GeminiProvider(BaseLLMProvider):
         headers = self._get_headers_sync()
         body = self._build_request_body(messages, tools, **kwargs)
 
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(
+            timeout=60.0,
+            verify=self._get_verify_ssl()
+        ) as client:
             response = client.post(
                 self.config.url,
                 headers=headers,
@@ -251,7 +263,10 @@ class GeminiProvider(BaseLLMProvider):
             "generateContent", "streamGenerateContent"
         )
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            verify=self._get_verify_ssl()
+        ) as client:
             async with client.stream(
                 "POST",
                 stream_url,

@@ -428,7 +428,7 @@ async def main():
 
     # Initialize components
     auth = IdaaSClient(settings.idaas)
-    llm = GeminiProvider(settings.llm.providers["gemini"], auth)
+    llm = GeminiProvider(settings.llm, auth)
     mcp = MCPClient(settings.mcp.servers["looker"])
 
     # Connect to MCP server

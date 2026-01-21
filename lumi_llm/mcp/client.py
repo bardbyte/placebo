@@ -1,16 +1,15 @@
 """
 MCP (Model Context Protocol) client for connecting to tool servers.
-Uses SSE transport to communicate with MCP servers like Looker Toolbox.
+Supports Streamable HTTP transport per MCP specification.
+Handles both application/json and text/event-stream responses.
 """
 
-import asyncio
 import json
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 import httpx
-from httpx_sse import aconnect_sse, connect_sse
 
 if TYPE_CHECKING:
     from lumi_llm.config.settings import MCPServerConfig
@@ -34,7 +33,7 @@ class MCPToolResult:
 class MCPClient:
     """
     Client for MCP (Model Context Protocol) servers.
-    Supports SSE transport for real-time communication.
+    Supports Streamable HTTP transport with both JSON and SSE responses.
     """
 
     def __init__(self, config: "MCPServerConfig"):
@@ -49,49 +48,40 @@ class MCPClient:
         self._session_id: str | None = None
         self._message_endpoint: str | None = None
 
+    def _get_verify_ssl(self) -> bool:
+        """Get SSL verification setting from config."""
+        return getattr(self.config, 'verify_ssl', True)
+
     async def connect(self) -> None:
         """
         Connect to the MCP server and initialize the session.
         Discovers available tools.
         """
-        # For SSE transport, we establish connection and get session info
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Initial SSE connection to get endpoints
-            async with aconnect_sse(
-                client, "GET", self.config.url
-            ) as event_source:
-                async for event in event_source.aiter_sse():
-                    if event.event == "endpoint":
-                        # Parse endpoint info
-                        data = json.loads(event.data)
-                        self._message_endpoint = data.get("url")
-                        self._session_id = data.get("sessionId")
-                        break
+        # For streamable-http, the message endpoint is the same as the config URL
+        self._message_endpoint = self.config.url
+        self._session_id = str(uuid.uuid4())
 
-            # If we got an endpoint, initialize and list tools
-            if self._message_endpoint:
-                await self._initialize()
-                await self._list_tools()
+        # Initialize and list tools
+        await self._initialize()
+        await self._list_tools()
 
     def connect_sync(self) -> None:
         """Connect synchronously."""
-        with httpx.Client(timeout=30.0) as client:
-            with connect_sse(client, "GET", self.config.url) as event_source:
-                for event in event_source.iter_sse():
-                    if event.event == "endpoint":
-                        data = json.loads(event.data)
-                        self._message_endpoint = data.get("url")
-                        self._session_id = data.get("sessionId")
-                        break
+        # For streamable-http, the message endpoint is the same as the config URL
+        self._message_endpoint = self.config.url
+        self._session_id = str(uuid.uuid4())
 
-            if self._message_endpoint:
-                self._initialize_sync()
-                self._list_tools_sync()
+        # Initialize and list tools
+        self._initialize_sync()
+        self._list_tools_sync()
 
     async def _send_request(
         self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Send a JSON-RPC request to the MCP server."""
+        """
+        Send a JSON-RPC request to the MCP server.
+        Handles both application/json and text/event-stream responses.
+        """
         if not self._message_endpoint:
             raise RuntimeError("Not connected to MCP server")
 
@@ -104,24 +94,65 @@ class MCPClient:
         if params:
             payload["params"] = params
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            verify=self._get_verify_ssl()
+        ) as client:
             response = await client.post(
                 self._message_endpoint,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                },
             )
             response.raise_for_status()
-            result = response.json()
 
-            if "error" in result:
-                raise RuntimeError(f"MCP error: {result['error']}")
+            content_type = response.headers.get("content-type", "").lower()
 
-            return result.get("result", {})
+            if "text/event-stream" in content_type:
+                # Handle SSE response - parse events and find the result
+                return await self._parse_sse_response_async(client, response)
+            else:
+                # Handle JSON response (application/json or default)
+                result = response.json()
+
+                if "error" in result:
+                    raise RuntimeError(f"MCP error: {result['error']}")
+
+                return result.get("result", {})
+
+    async def _parse_sse_response_async(
+        self, client: httpx.AsyncClient, initial_response: httpx.Response
+    ) -> dict[str, Any]:
+        """Parse SSE response stream and extract the JSON-RPC result."""
+        # For SSE, we need to iterate through events
+        text = initial_response.text
+        result = {}
+
+        for line in text.split('\n'):
+            line = line.strip()
+            if line.startswith('data:'):
+                data_str = line[5:].strip()
+                if data_str:
+                    try:
+                        data = json.loads(data_str)
+                        if "result" in data:
+                            result = data.get("result", {})
+                        elif "error" in data:
+                            raise RuntimeError(f"MCP error: {data['error']}")
+                    except json.JSONDecodeError:
+                        continue
+
+        return result
 
     def _send_request_sync(
         self, method: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Send a JSON-RPC request synchronously."""
+        """
+        Send a JSON-RPC request synchronously.
+        Handles both application/json and text/event-stream responses.
+        """
         if not self._message_endpoint:
             raise RuntimeError("Not connected to MCP server")
 
@@ -134,19 +165,54 @@ class MCPClient:
         if params:
             payload["params"] = params
 
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(
+            timeout=60.0,
+            verify=self._get_verify_ssl()
+        ) as client:
             response = client.post(
                 self._message_endpoint,
                 json=payload,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                },
             )
             response.raise_for_status()
-            result = response.json()
 
-            if "error" in result:
-                raise RuntimeError(f"MCP error: {result['error']}")
+            content_type = response.headers.get("content-type", "").lower()
 
-            return result.get("result", {})
+            if "text/event-stream" in content_type:
+                # Handle SSE response
+                return self._parse_sse_response_sync(response)
+            else:
+                # Handle JSON response
+                result = response.json()
+
+                if "error" in result:
+                    raise RuntimeError(f"MCP error: {result['error']}")
+
+                return result.get("result", {})
+
+    def _parse_sse_response_sync(self, response: httpx.Response) -> dict[str, Any]:
+        """Parse SSE response and extract the JSON-RPC result."""
+        text = response.text
+        result = {}
+
+        for line in text.split('\n'):
+            line = line.strip()
+            if line.startswith('data:'):
+                data_str = line[5:].strip()
+                if data_str:
+                    try:
+                        data = json.loads(data_str)
+                        if "result" in data:
+                            result = data.get("result", {})
+                        elif "error" in data:
+                            raise RuntimeError(f"MCP error: {data['error']}")
+                    except json.JSONDecodeError:
+                        continue
+
+        return result
 
     async def _initialize(self) -> None:
         """Initialize the MCP session."""
