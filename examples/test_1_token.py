@@ -65,6 +65,15 @@ def test_token_sync(settings):
         print(f"  Requesting token from: {settings.idaas.url}")
         print(f"  With scope: {settings.idaas.scope}")
 
+        # Show what headers will be sent
+        headers = auth_client._get_auth_headers()
+        print(f"  Headers being sent:")
+        print(f"    X-Auth-AppID: {headers['X-Auth-AppID'][:20]}...")
+        print(f"    X-Auth-Version: {headers['X-Auth-Version']}")
+        print(f"    X-Auth-Timestamp: {headers['X-Auth-Timestamp']}")
+        print(f"    X-Auth-Signature: {headers['X-Auth-Signature'][:20]}...")
+        print(f"    Content-Type: {headers['Content-Type']}")
+
         token = auth_client.get_token_sync()
 
         print(f"  [OK] Token acquired successfully")

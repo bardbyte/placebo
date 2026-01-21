@@ -1,9 +1,13 @@
 """
 IdaaS (Identity as a Service) client for token acquisition and management.
-Handles OAuth2 client credentials flow with automatic token refresh.
+Uses signature-based authentication with X-Auth headers.
 """
 
 import asyncio
+import base64
+import hashlib
+import hmac
+import json
 import time
 from dataclasses import dataclass
 from threading import Lock
@@ -26,7 +30,7 @@ class TokenInfo:
 
 class IdaaSClient:
     """
-    Client for IdaaS token acquisition with caching.
+    Client for IdaaS token acquisition with signature-based auth.
     Thread-safe for sync usage, async-safe for async usage.
     """
 
@@ -62,6 +66,42 @@ class IdaaSClient:
             return False
         return time.time() < (self._token.expires_at - self._refresh_buffer)
 
+    def _generate_signature(self, timestamp: int) -> str:
+        """
+        Generate HMAC-SHA256 signature for authentication.
+
+        The signature is computed as: HMAC-SHA256(secret, app_id + timestamp)
+        Then base64 URL-safe encoded.
+        """
+        message = f"{self.config.id}{timestamp}"
+        signature = hmac.new(
+            self.config.secret.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        # Base64 URL-safe encoding (replace + with -, / with _, remove padding)
+        encoded = base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')
+        return encoded
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Generate authentication headers for IdaaS request."""
+        timestamp = int(time.time() * 1000)  # Milliseconds
+        signature = self._generate_signature(timestamp)
+
+        return {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Auth-AppID": self.config.id,
+            "X-Auth-Signature": signature,
+            "X-Auth-Version": "2",
+            "X-Auth-Timestamp": str(timestamp),
+        }
+
+    def _build_request_body(self, scope: list[str] | None = None) -> dict:
+        """Build the JSON request body."""
+        effective_scope = scope if scope is not None else self.config.scope
+        return {"scope": effective_scope} if effective_scope else {}
+
     def _parse_token_response(self, response_data: dict) -> TokenInfo:
         """Parse token response into TokenInfo."""
         # Calculate expiry time - use response expires_in or fall back to config
@@ -74,12 +114,6 @@ class IdaaSClient:
             expires_at=expires_at,
             scope=response_data.get("scope"),
         )
-
-    def _get_scope(self, scope: list[str] | None = None) -> list[str] | None:
-        """Get scope to use - parameter overrides config."""
-        if scope is not None:
-            return scope
-        return self.config.scope if self.config.scope else None
 
     def get_token_sync(self, scope: list[str] | None = None) -> str:
         """
@@ -101,20 +135,13 @@ class IdaaSClient:
                 timeout=30.0,
                 verify=self._get_verify_ssl()
             ) as client:
-                payload = {
-                    "grant_type": "client_credentials",
-                    "client_id": self.config.id,
-                    "client_secret": self.config.secret,
-                }
-
-                effective_scope = self._get_scope(scope)
-                if effective_scope:
-                    payload["scope"] = " ".join(effective_scope)
+                headers = self._get_auth_headers()
+                body = self._build_request_body(scope)
 
                 response = client.post(
                     self.config.url,
-                    data=payload,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
+                    json=body,
                 )
                 response.raise_for_status()
 
@@ -141,20 +168,13 @@ class IdaaSClient:
                 timeout=30.0,
                 verify=self._get_verify_ssl()
             ) as client:
-                payload = {
-                    "grant_type": "client_credentials",
-                    "client_id": self.config.id,
-                    "client_secret": self.config.secret,
-                }
-
-                effective_scope = self._get_scope(scope)
-                if effective_scope:
-                    payload["scope"] = " ".join(effective_scope)
+                headers = self._get_auth_headers()
+                body = self._build_request_body(scope)
 
                 response = await client.post(
                     self.config.url,
-                    data=payload,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
+                    json=body,
                 )
                 response.raise_for_status()
 
