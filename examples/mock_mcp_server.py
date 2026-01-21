@@ -186,7 +186,7 @@ class MCPHandler(BaseHTTPRequestHandler):
         print(f"[HTTP] {args[0]}")
 
 
-def run_server(host: str = "127.0.0.1", port: int = 5001):
+def run_server(host: str = "localhost", port: int = 5000):
     """Run the mock MCP server."""
     server = HTTPServer((host, port), MCPHandler)
     print(f"""

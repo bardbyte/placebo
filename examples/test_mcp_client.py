@@ -46,7 +46,7 @@ async def test_mcp_connection():
     print("=" * 60)
 
     config = MCPServerConfig(
-        url="http://127.0.0.1:5001/mcp",
+        url="http://localhost:5000/mcp",
         transport="streamable-http",
         verify_ssl=False
     )
@@ -155,7 +155,7 @@ async def test_sync_operations():
     print("=" * 60)
 
     config = MCPServerConfig(
-        url="http://127.0.0.1:5001/mcp",
+        url="http://localhost:5000/mcp",
         transport="streamable-http",
         verify_ssl=False
     )
