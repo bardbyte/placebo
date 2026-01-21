@@ -190,26 +190,32 @@ This file configures the Python application. The default configuration should wo
 
 ```yaml
 idaas:
+  url: "https://oneidentityapi-dev.aexp.com/security/digital/v1/application/token"
+  scope:
+    - "/genai/google/v1/models/gemini-2.5-pro/#*::post"
+  originator_source: "digital-payments"
   id: ${CIBIS_CONSUMER_INTEGRATION_ID}
-  url: "https://eag-dev.aexp.com/oneidentity/security/digital/v1/application/token"
   secret: ${CIBIS_CONSUMER_SECRET}
-  token_refresh_time: 60
+  token_refresh_interval: 60
+  verify_ssl: false
 
 llm:
-  default_provider: "gemini"
-  providers:
-    gemini:
-      url: "https://eag-dev.aexp.com/genai/google/v1/models/gemini-1.5-pro-002/generateContent"
-      scope: ["/genai/google/v1/models/gemini-1.5-pro-002/#*::post"]
-      temperature: 0.5
-      max_tokens: 1024
+  url: "https://eag-dev.aexp.com/genai/google/v1/models/gemini-2.5-pro/generateContent"
+  temperature: 0.5
+  top_k: 5
+  top_p: 0.9
+  max_tokens: 1024
+  verify_ssl: false
 
 mcp:
   servers:
     looker:
       url: "http://localhost:5000/mcp"
-      transport: "sse"
+      transport: "streamable-http"
+      verify_ssl: false
 ```
+
+**Note:** The `scope` is now in the `idaas` section, not in `llm`. Set `verify_ssl: false` if you have SSL certificate issues.
 
 ### 3. MCP Toolbox Config (`tools.yaml`)
 
@@ -254,19 +260,35 @@ You should see:
 
 Keep this terminal running.
 
-### Step 2: Run the Interactive Chat
+### Step 2: Run Tests (Recommended)
 
-In **Terminal 2**:
+Before running the chat, verify your setup with the test scripts:
 
 ```bash
 cd placebo
 source venv/bin/activate
 
+# Run all tests (token, basic Gemini, tools)
+python examples/run_all_tests.py
+
+# Or run individual tests:
+python examples/test_1_token.py      # Test token generation
+python examples/test_2_gemini_basic.py   # Test basic Gemini calls
+python examples/test_3_gemini_tools.py   # Test Gemini with tools
+```
+
+All tests should pass before proceeding to the chat.
+
+### Step 3: Run the Interactive Chat
+
+In **Terminal 2**:
+
+```bash
 # Run the interactive chat
 python examples/chat.py
 ```
 
-### Step 3: Start Chatting
+### Step 4: Start Chatting
 
 ```
 ╔═════════════════════════════════════════════════════════════╗

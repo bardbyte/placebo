@@ -15,18 +15,18 @@ from pydantic import BaseModel, Field
 
 class IdaaSConfig(BaseModel):
     """IdaaS authentication configuration."""
-    id: str
-    version: str = "2"
     url: str
+    scope: list[str] = Field(default_factory=list)
+    originator_source: str | None = None
+    id: str
     secret: str
-    token_refresh_time: int = 60
+    token_refresh_interval: int = 60
     verify_ssl: bool = True
 
 
 class LLMConfig(BaseModel):
     """LLM configuration - direct provider settings."""
     url: str
-    scope: list[str] = Field(default_factory=list)
     temperature: float = 0.5
     top_k: int | None = None
     top_p: float | None = None

@@ -35,7 +35,7 @@ class IdaaSClient:
         Initialize the IdaaS client.
 
         Args:
-            config: IdaaS configuration with URL, credentials, etc.
+            config: IdaaS configuration with URL, credentials, scope, etc.
         """
         self.config = config
         self._token: TokenInfo | None = None
@@ -64,8 +64,8 @@ class IdaaSClient:
 
     def _parse_token_response(self, response_data: dict) -> TokenInfo:
         """Parse token response into TokenInfo."""
-        # Calculate expiry time
-        expires_in = response_data.get("expires_in", self.config.token_refresh_time)
+        # Calculate expiry time - use response expires_in or fall back to config
+        expires_in = response_data.get("expires_in", self.config.token_refresh_interval)
         expires_at = time.time() + expires_in
 
         return TokenInfo(
@@ -75,13 +75,19 @@ class IdaaSClient:
             scope=response_data.get("scope"),
         )
 
+    def _get_scope(self, scope: list[str] | None = None) -> list[str] | None:
+        """Get scope to use - parameter overrides config."""
+        if scope is not None:
+            return scope
+        return self.config.scope if self.config.scope else None
+
     def get_token_sync(self, scope: list[str] | None = None) -> str:
         """
         Get a valid access token synchronously.
         Will fetch a new token if the current one is expired.
 
         Args:
-            scope: Optional list of scopes to request.
+            scope: Optional list of scopes to request. Defaults to config scope.
 
         Returns:
             Valid access token string.
@@ -101,8 +107,9 @@ class IdaaSClient:
                     "client_secret": self.config.secret,
                 }
 
-                if scope:
-                    payload["scope"] = " ".join(scope)
+                effective_scope = self._get_scope(scope)
+                if effective_scope:
+                    payload["scope"] = " ".join(effective_scope)
 
                 response = client.post(
                     self.config.url,
@@ -120,7 +127,7 @@ class IdaaSClient:
         Will fetch a new token if the current one is expired.
 
         Args:
-            scope: Optional list of scopes to request.
+            scope: Optional list of scopes to request. Defaults to config scope.
 
         Returns:
             Valid access token string.
@@ -140,8 +147,9 @@ class IdaaSClient:
                     "client_secret": self.config.secret,
                 }
 
-                if scope:
-                    payload["scope"] = " ".join(scope)
+                effective_scope = self._get_scope(scope)
+                if effective_scope:
+                    payload["scope"] = " ".join(effective_scope)
 
                 response = await client.post(
                     self.config.url,

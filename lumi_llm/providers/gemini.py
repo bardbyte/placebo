@@ -153,7 +153,8 @@ class GeminiProvider(BaseLLMProvider):
 
     async def _get_headers(self) -> dict[str, str]:
         """Get request headers with auth token."""
-        token = await self.auth_client.get_token(scope=self.config.scope)
+        # Scope is configured in IdaaSConfig, not needed here
+        token = await self.auth_client.get_token()
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -162,7 +163,8 @@ class GeminiProvider(BaseLLMProvider):
 
     def _get_headers_sync(self) -> dict[str, str]:
         """Get request headers with auth token (sync)."""
-        token = self.auth_client.get_token_sync(scope=self.config.scope)
+        # Scope is configured in IdaaSConfig, not needed here
+        token = self.auth_client.get_token_sync()
         return {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",

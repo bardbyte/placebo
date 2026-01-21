@@ -1,14 +1,15 @@
 idaas:
+  url: "https://oneidentityapi-dev.aexp.com/security/digital/v1/application/token"
+  scope:
+    - "/genai/google/v1/models/gemini-2.5-pro/#*::post"
+  originator_source: "digital-payments"
   id: ${CIBIS_CONSUMER_INTEGRATION_ID}
-  version: "2"
-  url: "https://eag-dev.aexp.com/oneidentity/security/digital/v1/application/token"
   secret: ${CIBIS_CONSUMER_SECRET}
-  token_refresh_time: 60
+  token_refresh_interval: 60
   verify_ssl: false
 
 llm:
-  url: "https://eag-dev.aexp.com/genai/google/v1/models/gemini-1.5-pro-002/generateContent"
-  scope: ["/genai/google/v1/models/gemini-1.5-pro-002/#*::post"]
+  url: "https://eag-dev.aexp.com/genai/google/v1/models/gemini-2.5-pro/generateContent"
   temperature: 0.5
   top_k: 5
   top_p: 0.9
