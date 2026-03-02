@@ -7,6 +7,8 @@ sources:
     base_url: ${LOOKER_INSTANCE_URL}
     client_id: ${LOOKER_CLIENT_ID}
     client_secret: ${LOOKER_CLIENT_SECRET}
+    project: ${GCP_PROJECT_ID}
+    location: ${GCP_LOCATION:us}
     verify_ssl: true
     timeout: "120s"
 
@@ -37,6 +39,12 @@ toolsets:
     - get-project-files
     - get-project-file
 
+  # Conversational Analytics — Gemini-powered NL2SQL
+  conversational-analytics:
+    - ask-data-insights
+    - get-models
+    - get-explores
+
   # All tools combined
   all:
     - get-models
@@ -55,6 +63,7 @@ toolsets:
     - get-projects
     - get-project-files
     - get-project-file
+    - ask-data-insights
 
 # Tool definitions
 tools:
@@ -176,6 +185,25 @@ tools:
       Executes all queries in a dashboard and returns data.
       Requires: dashboard ID (from get-dashboards).
       Returns: data from all dashboard elements.
+
+  # ============================================
+  # Conversational Analytics (Gemini-powered NL2SQL)
+  # ============================================
+  # Requires: project and location set on the looker source
+  # IAM: roles/looker.instanceUser, roles/cloudaicompanion.user,
+  #       roles/geminidataanalytics.dataAgentStatelessUser
+  # API: geminidataanalytics.googleapis.com must be enabled
+  ask-data-insights:
+    kind: looker-conversational-analytics
+    source: my-looker
+    description: |
+      Ask a natural language question about your data using Looker's
+      Conversational Analytics API (powered by Gemini).
+      Handles intent classification, entity resolution, SQL generation,
+      data retrieval, and natural language answer synthesis automatically.
+      Requires: user_query_with_context (string) and explore_references
+      (array of {model, explore} objects, 1-5 items).
+      Returns: NL answer, generated Looker query, data rows, and analysis.
 
   # ============================================
   # LookML Project Exploration
